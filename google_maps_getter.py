@@ -1,11 +1,14 @@
 # google_maps_getter
 
+# LOAD STATIC KEY
+staticKey = ''
+
 def getStaticMaps(center=(43.671000, -79.328089), markers=[]):
     """ center is where the map centered about
         markers is list of tuples with (lat, long)
     """
 
-    mapRequest = """https://maps.googleapis.com/maps/api/staticmap?key=AIzaSyCwF7Acvch2YcWniPurjTFITPTLigq3FFM
+    mapRequest = """https://maps.googleapis.com/maps/api/staticmap?key={}
 &center={}, {}
 &zoom=13
 &format=png
@@ -19,7 +22,7 @@ def getStaticMaps(center=(43.671000, -79.328089), markers=[]):
 &style=feature:transit.station|visibility:off
 &style=feature:transit.line|element:geometry|color:0x888888|visibility:off
 &markers=anchor:center|size:tiny|icon:http://mineralsy.pl/upload/mineral/icons/domek.png|191+hastings+av+toronto
-""".format(center[0], center[1])
+""".format(staticKey, center[0], center[1])
 
     for marker in markers:
         mapRequest += '&markers=anchor:center|icon:https://www.comparabus.com/bundles/app/images/favicon/company_le-bus-direct.png|{}, {}'.format(marker[0], marker[1])
