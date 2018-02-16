@@ -1,4 +1,4 @@
-https://maps.googleapis.com/maps/api/staticmap?key=AIzaSyCwF7Acvch2YcWniPurjTFITPTLigq3FFM
+https://maps.googleapis.com/maps/api/staticmap?key=<KEY HERE>
 &center=43.671000,-79.328089
 &zoom=14
 &format=png
