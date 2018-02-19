@@ -50,4 +50,5 @@ Thumbs.db
 
 # FOLDERS #
 #################
-.spyderworkspace
+.spyderworkspace/
+.__pycache__/
