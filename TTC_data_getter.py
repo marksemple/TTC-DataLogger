@@ -1,65 +1,38 @@
-# TTC_data_getter.py
-
 import urllib
-import pprint
 import xmltodict
-from math import floor
 from xml.etree import ElementTree
 
-mystops = {'501': '8882',   # queen at leslie, west
-           '506': '7935',   # gerrard at leslie west
-           '83': '7871',    # jones bus north at gerrard
-           '31': '1292'}    # greenwood bus north at gerrard
+agency = 'ttc'
+baseurl = 'http://webservices.nextbus.com'
+baseurl += '/service/publicXMLFeed?a={}&command='.format(agency)
 
-
-baseurl = 'http://webservices.nextbus.com/service/publicXMLFeed?command='
-# query = 'command=predictionsForMultiStops&a=ttc'
-# fullquery = baseurl + query
-
-# for stop in mystops.keys():
-#     fullquery += '&stops={}|{}'.format(stop, mystops[stop])
-
-
-# # print(dir(body))
-# # print(body.items())
-
-
-def getRouteList():
-    """ Returns XML like so:
-        <body>
-            <route tag="92" title="92-Woodbine South"/>
-            <route tag="83" title="83-Jones"/>
-            ...
-        </body>
-    """
-    routeListQuery = baseurl + 'routeList&a=ttc'
-    return routeListQuery
+""" Helper functions for interacting with the NEXTBUS API
+    There are more query commands that can be used,
+    but for my current needs these ones were sufficient.
+    I want to periodically poll the API for my nearest transit predictions
+    and then do something with that later.
+"""
 
 
 def getRouteConfig(route):
-    """ Returns XML like so:
+    """ Returns XML:
     <body>
-        <route tag="83" title="83-Jones" color="ff0000"
-                oppositeColor="ffffff"
-                latMin="43.654699"
-                latMax="43.6810699"
-                lonMin="-79.34003"
-                lonMax="-79.32667"/>
-        ...
-    </body>
+        <route>
     """
 
-    routeConfigQuery = baseurl + 'routeConfig&a=ttc'
-    # for route in routes:
-    if type(route) is int:
-        routeConfigQuery += '&r={}'.format(route)
-    return routeConfigQuery
+    query = baseurl + 'routeConfig'
+    query += '&r={}'.format(route)
+    with urllib.request.urlopen(query) as myurl:
+        body = ElementTree.parse(myurl).getroot()
+    for item in body:
+        for ii in item:
+            print(ii.attrib)
 
 
 def getVehicleLocations(route):
     """ Returns XML like so:
     <body copyright=''>
-        <vehccle id="####"" routeTag="##" dirTag="##_X_##"
+        <vehicle id="####"" routeTag="##" dirTag="##_X_##"
                  lat="43.659999" lon="-79.328751"
                  secsSinceReport="14"
                  predictable="true" heading="348" />
@@ -67,7 +40,7 @@ def getVehicleLocations(route):
     </body>
     """
 
-    vLocationQuery = baseurl + 'vehicleLocations&a=ttc'
+    vLocationQuery = baseurl + 'vehicleLocations&a={}'.format(agency)
 
     if type(route) is int:
         vLocationQuery += '&r={}'.format(route)
@@ -90,26 +63,78 @@ def getVehicleLocations(route):
     return vLocations
 
 
-def AngleToCompass():
-    pass
+def getPredictions(route, stop):
+    """ get single prediction for stop at route """
+
+    myPrediction = {'route': route,
+                    'direction': 'N/A',
+                    'stopTitle': 'N/A',
+                    'times': []}
+
+    query = baseurl + 'predictions&s={}&r={}'.format(stop, route)
+
+    with urllib.request.urlopen(query) as myurl:
+        body = ElementTree.parse(myurl).getroot()
+
+    for predictions in body:
+        routeTag = predictions.get('routeTag')
+        myPrediction['stopTitle'] = predictions.get('stopTitle')
+
+        for direction in predictions:
+
+            try:
+                dirr = direction.get('title')
+                dirr = dirr.split()[0]
+                myPrediction['direction'] = dirr
+            except AttributeError:
+                pass
+
+            for idx, prediction in enumerate(direction):
+                if idx < 3:
+                    time = prediction.get('minutes')
+                    myPrediction['times'].append(time)
+
+    return myPrediction
+
+
+def getMultiprediction(RouteStop_pairs):
+    """ <body: copyright>
+            <predictions: agency, routetag, stoptitle>
+                <direction: title>
+                    <prediction: minutes>"""
+
+    query = baseurl + 'predictionsForMultiStops'
+
+    for stop in RouteStop_pairs:
+        query += '&stops={}|{}'.format(stop[0], stop[1])
+
+    print(query)
+
+    with urllib.request.urlopen(query) as myurl:
+        body = ElementTree.parse(myurl).getroot()
+
+    for predictions in body:
+        routeTag = predictions.get('routeTag')
+        stopTitle = predictions.get('stopTitle')
+        for direction in predictions:
+            dirr = direction.get('title')
+            dirr = dirr.split()[0]
+            for idx, prediction in enumerate(direction):
+                if idx > 0:
+                    continue
+                minutes = prediction.get('minutes')
+                print('{} {} {}: {} minutes'.format(routeTag,
+                                                    dirr,
+                                                    stopTitle,
+                                                    minutes))
 
 
 if __name__ == "__main__":
-    import webbrowser
 
-    locations = getVehicleLocations(506)
-    print(locations)
-    # webbrowser.open(fullquery)
+    getMultiprediction([('31','1292'),     # greenwood north
+                        ('83', '7871'),    # jones north
+                        ('506', '7935'),   # gerrard at leslie: west
+                        ('506', '4875'),   # gerrard at leslie: east
+                        ('501', '4456'),   # queen at leslie:   east
+                        ('501', '8882')])  # queen at leslie:   west
 
-# fullquery = getRouteConfig(routes=[92, 83,])
-
-# print(fullquery)
-
-# with urllib.request.urlopen(fullquery) as myurl:
-#     body = ElementTree.parse(myurl).getroot()
-
-# for item in body:
-#     print(item.attrib)
-    # for route in item:
-        # print()
-    # print(dir(item))
